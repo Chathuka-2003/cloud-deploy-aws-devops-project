@@ -1,0 +1,37 @@
+name: CloudDeploy CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm install
+
+      - name: Build backend Docker image
+        run: docker build -t clouddeploy-backend ./backend
+
+      - name: Build frontend Docker image
+        run: docker build -t clouddeploy-frontend ./frontend
+
+      - name: Validate Docker Compose
+        run: docker compose config
