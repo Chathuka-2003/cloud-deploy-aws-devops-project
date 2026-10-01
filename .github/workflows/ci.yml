@@ -1,4 +1,4 @@
-name: CloudDeploy CI
+name: CloudDeploy CI/CD
 
 on:
   push:
@@ -10,11 +10,16 @@ on:
       - main
       - master
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
-  build:
+  build-and-push:
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Checkout source code
         uses: actions/checkout@v4
 
@@ -27,11 +32,34 @@ jobs:
         working-directory: ./backend
         run: npm install
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
       - name: Build backend Docker image
-        run: docker build -t clouddeploy-backend ./backend
+        run: |
+          docker build \
+            -t ${{ steps.login-ecr.outputs.registry }}/clouddeploy-backend:latest \
+            ./backend
 
       - name: Build frontend Docker image
-        run: docker build -t clouddeploy-frontend ./frontend
+        run: |
+          docker build \
+            -t ${{ steps.login-ecr.outputs.registry }}/clouddeploy-frontend:latest \
+            ./frontend
 
-      - name: Validate Docker Compose
-        run: docker compose config
+      - name: Push backend image to ECR
+        run: |
+          docker push \
+            ${{ steps.login-ecr.outputs.registry }}/clouddeploy-backend:latest
+
+      - name: Push frontend image to ECR
+        run: |
+          docker push \
+            ${{ steps.login-ecr.outputs.registry }}/clouddeploy-frontend:latest
