@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudDeploy</title>
+</head>
+<body>
+
+    <h1>🚀 CloudDeploy</h1>
+
+    <p>AWS DevOps Deployment Platform</p>
+
+    <button onclick="checkBackend()">Check Backend</button>
+
+    <p id="result"></p>
+
+    <script>
+        async function checkBackend() {
+            const result = document.getElementById("result");
+
+            try {
+                const response = await fetch("/api/health");
+                const data = await response.json();
+
+                result.textContent = "Backend Status: " + data.status;
+            } catch (error) {
+                result.textContent = "Backend connection failed!";
+            }
+        }
+    </script>
+
+</body>
+</html>
