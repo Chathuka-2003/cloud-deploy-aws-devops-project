@@ -12,8 +12,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Get GitHub OIDC token
+        id: oidc
+        run: |
+          RESPONSE=$(curl -s \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com")
 
-      - name: OIDC Debugger
-        uses: github/actions-oidc-debugger@main
+          TOKEN=$(echo "$RESPONSE" | jq -r '.value')
+
+          echo "OIDC token received successfully"
+
+          PAYLOAD=$(echo "$TOKEN" | cut -d '.' -f 2 | base64 -d 2>/dev/null | jq)
+
+          echo "========== OIDC CLAIMS =========="
+          echo "$PAYLOAD"
+          echo "================================="
