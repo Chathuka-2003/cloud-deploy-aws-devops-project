@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - master
+
   pull_request:
     branches:
       - main
@@ -20,46 +21,106 @@ jobs:
 
     steps:
 
+      # --------------------------------------------------
+      # 1. Checkout source code
+      # --------------------------------------------------
       - name: Checkout source code
         uses: actions/checkout@v4
 
+      # --------------------------------------------------
+      # 2. Display GitHub OIDC context
+      # --------------------------------------------------
+      - name: Check GitHub repository context
+        run: |
+          echo "Repository: $GITHUB_REPOSITORY"
+          echo "Ref: $GITHUB_REF"
+          echo "Event: $GITHUB_EVENT_NAME"
+          echo "SHA: $GITHUB_SHA"
+
+      # --------------------------------------------------
+      # 3. Setup Node.js
+      # --------------------------------------------------
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
+      # --------------------------------------------------
+      # 4. Install backend dependencies
+      # --------------------------------------------------
       - name: Install backend dependencies
         working-directory: ./backend
         run: npm install
 
+      # --------------------------------------------------
+      # 5. Configure AWS using GitHub OIDC
+      # --------------------------------------------------
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: us-east-1
+          role-session-name: GitHubActions-CloudDeploy
 
+      # --------------------------------------------------
+      # 6. Verify AWS identity
+      # --------------------------------------------------
+      - name: Verify AWS identity
+        run: |
+          aws sts get-caller-identity
+
+      # --------------------------------------------------
+      # 7. Login to Amazon ECR
+      # --------------------------------------------------
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      # --------------------------------------------------
+      # 8. Build backend Docker image
+      # --------------------------------------------------
       - name: Build backend Docker image
         run: |
           docker build \
             -t ${{ steps.login-ecr.outputs.registry }}/clouddeploy-backend:latest \
             ./backend
 
+      # --------------------------------------------------
+      # 9. Build frontend Docker image
+      # --------------------------------------------------
       - name: Build frontend Docker image
         run: |
           docker build \
             -t ${{ steps.login-ecr.outputs.registry }}/clouddeploy-frontend:latest \
             ./frontend
 
+      # --------------------------------------------------
+      # 10. Push backend image to ECR
+      # --------------------------------------------------
       - name: Push backend image to ECR
         run: |
           docker push \
             ${{ steps.login-ecr.outputs.registry }}/clouddeploy-backend:latest
 
+      # --------------------------------------------------
+      # 11. Push frontend image to ECR
+      # --------------------------------------------------
       - name: Push frontend image to ECR
         run: |
           docker push \
             ${{ steps.login-ecr.outputs.registry }}/clouddeploy-frontend:latest
+
+      # --------------------------------------------------
+      # 12. Deployment summary
+      # --------------------------------------------------
+      - name: Deployment summary
+        run: |
+          echo "========================================"
+          echo "CloudDeploy CI/CD completed successfully"
+          echo "========================================"
+          echo "Backend image:"
+          echo "${{ steps.login-ecr.outputs.registry }}/clouddeploy-backend:latest"
+          echo ""
+          echo "Frontend image:"
+          echo "${{ steps.login-ecr.outputs.registry }}/clouddeploy-frontend:latest"
+          echo "========================================"
